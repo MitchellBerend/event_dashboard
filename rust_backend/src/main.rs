@@ -1,59 +1,63 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use dotenv::dotenv;
-use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::env;
+use std::sync::Arc;
 
-#[derive(Serialize, Deserialize, Debug, sqlx::FromRow)]
-struct EventReference {
-    id: i32,
-    reference: String,
-}
+use actix_cors::Cors;
+use actix_web::{http, web, App, HttpServer};
+use dotenv::dotenv;
+use env_logger::Env;
+use actix_web::middleware::Logger;
+use mongodb::{options::ClientOptions, Client};
+use sqlx::PgPool;
 
-async fn get_events(pool: web::Data<PgPool>) -> impl Responder {
-    let items = sqlx::query_as::<_, EventReference>(
-        "SELECT id, reference FROM event ORDER BY id DESC LIMIT 500",
-    )
-    .fetch_all(pool.get_ref())
-    .await;
-
-    match items {
-        Ok(items) => {
-            println!("Sending {:?}", &items);
-            HttpResponse::Ok().json(items)
-        }
-        Err(e) => {
-            println!("Error: {:?}", e);
-            HttpResponse::InternalServerError().finish()
-        }
-    }
-}
-
-async fn hello(pool: web::Data<PgPool>) -> impl Responder {
-    let query = sqlx::query_as::<_, EventReference>("SELECT * FROM event")
-        .fetch_all(pool.get_ref())
-        .await
-        .unwrap();
-    HttpResponse::Ok().body(format!("{:?}", query))
-}
+use rust_backend::handlers;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-    let database_url = env::var("POSTGRES_URI").expect("POSTGRES_URI must be set");
-    println!("{}", database_url);
 
-    let pool = PgPool::connect(&database_url)
-        .await
-        .expect("Failed to create pool.");
+    // Postgres connection
+    let pool = {
+        let database_uri = env::var("POSTGRES_URI").expect("POSTGRES_URI must be set");
+        PgPool::connect(&database_uri)
+            .await
+            .expect("Failed to create pool.")
+    };
 
-    println!("listening on 127.0.0.1:8081");
+    // Mongo connection
+    let mongo_client = {
+        let mongo_uri = env::var("MONGO_URI").expect("MONGO_URI must be set");
+        let mongo_client_options = ClientOptions::parse(mongo_uri).await.unwrap();
+        Client::with_options(mongo_client_options).unwrap()
+    };
+
+    // Logging setup
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
+    let service = handlers::Service {
+        pg_pool: pool.clone(),
+        mongo_client: Arc::new(mongo_client),
+    };
 
     HttpServer::new(move || {
+        let cors = Cors::default()
+            .allowed_origin("http://localhost:5173")
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![
+                http::header::AUTHORIZATION,
+                http::header::ACCEPT,
+                http::header::CONTENT_TYPE,
+                http::header::ORIGIN,
+            ])
+            .allowed_header(http::header::CONTENT_TYPE)
+            .max_age(3600);
+
         App::new()
-            .app_data(web::Data::new(pool.clone()))
-            .route("/events", web::get().to(get_events))
-            .route("/", web::get().to(hello))
+            .wrap(cors)
+            .wrap(Logger::default())
+            .app_data(web::Data::new(service.clone()))
+            .route("/events", web::get().to(handlers::get_events))
+            .route("/event/{id}", web::get().to(handlers::get_event))
+            .route("/event", web::post().to(handlers::handle_event))
     })
     .bind("0.0.0.0:8081")?
     .run()

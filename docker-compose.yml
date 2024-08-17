@@ -4,6 +4,8 @@ services:
       context: ./frontend
     ports:
       - "5173:5173"
+    env_file:
+      - ./frontend/frontend.env
     develop:
       watch:
         - action: sync
@@ -34,6 +36,7 @@ services:
     ports:
       - "8081:8081"
     environment:
+      - MONGO_URI=mongodb://mongo:27017/events_db
       - POSTGRES_URI=postgres://username:password@postgres:5432/mydb?sslmode=disable
     depends_on:
       - postgres

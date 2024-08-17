@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Event, EventTable } from "./EventTable"
 import { JsonViewer } from "./JsonViewer";
 import { Toaster } from "./components/ui/sonner";
+import eventService from "./services/events.service";
 
 function App() {
   const [data, setData] = useState<Array<Event>>([]);
@@ -15,11 +16,8 @@ function App() {
   useEffect(() => {
     async function getData() {
       try {
-        const response = await fetch('http://192.168.1.171:8080/events');
-        const result = await response.json();
-
-        setData(result);
-
+        const events = await eventService.getEvents();
+        setData(events);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -34,9 +32,8 @@ function App() {
         if (!reference) {
           return;
         }
-        const response = await fetch(`http://192.168.1.171:8080/event/${reference}`);
-        const result = await response.json();
-        setDatum(result);
+        const event = await eventService.getEvent(reference);
+        setDatum(event);
       } catch (error) {
         console.error('Error fetching data:', error);
       }

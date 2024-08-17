@@ -1,17 +1,22 @@
-# Start from the official Rust image
-FROM rust:1.80.1
+FROM rust:1.80.1 AS builder
 
-# Set the working directory inside the Docker container
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy the entire project into the container
+COPY Cargo.toml Cargo.lock ./
+
+RUN cargo fetch
+
 COPY . .
 
-# Build the project in release mode
 RUN cargo build --release
 
-# Expose the port that your Actix Web server will run on
+CMD ["./target/release/rust_backend"]
+
+FROM gcr.io/distroless/cc-debian12
+# FROM gcr.io/distroless/base-debian12
+
+COPY --from=builder /app/target/release/rust_backend .
+
 EXPOSE 8081
 
-# Command to run the application
-CMD ["./target/release/rust_backend"]
+CMD ["./rust_backend"]
