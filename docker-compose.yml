@@ -6,15 +6,9 @@ services:
       - "5173:5173"
     env_file:
       - ./frontend/frontend.env
-    develop:
-      watch:
-        - action: sync
-          path: ./frontend/
-          target: /app/
-          ignore:
-            - ./frontend/node_modules/
-        - action: rebuild
-          path: ./frontend/package.json
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/package.json:/app/package.json
 
   backend:
     build: ./backend

@@ -9,10 +9,6 @@ function App() {
   const [reference, setReference] = useState<string>();
   const [datum, setDatum] = useState<any>();
 
-  const onClickDatum = (ref: any) => {
-    setReference(ref);
-  };
-
   useEffect(() => {
     async function getData() {
       try {
@@ -21,7 +17,7 @@ function App() {
       } catch (error) {
         console.error('Error fetching data:', error);
       }
-    }
+    };
 
     getData().then();
   }, []);
@@ -46,7 +42,7 @@ function App() {
       <div
         className="flex-1 p-4 overflow-auto"
       >
-        <EventTable className="bg-white p-4 border rounded shadow" onClickDatum={onClickDatum} events={data} />
+        <EventTable className="bg-white p-4 border rounded shadow" onClickDatum={setReference} events={data} />
       </div>
       <JsonViewer data={datum} />
     </div>
