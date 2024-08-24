@@ -1,4 +1,3 @@
-use hex;
 use serde_json::Value;
 use sha2::{Sha256, Digest};
 

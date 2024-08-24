@@ -6,8 +6,6 @@ use sqlx::FromRow;
 pub struct EventReference {
     id: i32,
     reference: String,
-
-    #[sqlx(rename = "createdat")]
     created_at: DateTime<Utc>,
 }
 

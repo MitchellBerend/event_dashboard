@@ -2,14 +2,14 @@ use std::env;
 use std::sync::Arc;
 
 use actix_cors::Cors;
+use actix_web::middleware::Logger;
 use actix_web::{http, web, App, HttpServer};
 use dotenv::dotenv;
 use env_logger::Env;
-use actix_web::middleware::Logger;
 use mongodb::{options::ClientOptions, Client};
 use sqlx::PgPool;
 
-use rust_backend::handlers;
+use rust_backend::handlers::actix_handlers;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -33,7 +33,9 @@ async fn main() -> std::io::Result<()> {
     // Logging setup
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let service = handlers::Service {
+    sqlx::migrate!().run(&pool).await.unwrap();
+
+    let service = actix_handlers::Service {
         pg_pool: pool.clone(),
         mongo_client: Arc::new(mongo_client),
     };
@@ -55,9 +57,9 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .wrap(Logger::default())
             .app_data(web::Data::new(service.clone()))
-            .route("/events", web::get().to(handlers::get_events))
-            .route("/event/{id}", web::get().to(handlers::get_event))
-            .route("/event", web::post().to(handlers::handle_event))
+            .route("/events", web::get().to(actix_handlers::get_events))
+            .route("/event/{id}", web::get().to(actix_handlers::get_event))
+            .route("/event", web::post().to(actix_handlers::handle_event))
     })
     .bind("0.0.0.0:8081")?
     .run()
