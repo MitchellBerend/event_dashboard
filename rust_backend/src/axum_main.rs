@@ -45,7 +45,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/events", get(axum_handlers::get_events))
-        .route("/event/{id}", get(axum_handlers::get_event))
+        .route("/event/:schema_id", get(axum_handlers::get_event))
         .route("/event", post(axum_handlers::handle_event))
         .with_state(service)
         .layer(CorsLayer::permissive());

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Query, State},
+    extract::{Path, State},
     http::StatusCode,
-    Json
+    Json,
 };
 
 use mongodb::{
@@ -86,7 +86,7 @@ pub async fn handle_event(
 
 pub async fn get_event(
     State(service): State<Service>,
-    Query(schema_id): Query<String>,
+    Path(schema_id): Path<String>,
 ) -> Result<Json<Document>, (StatusCode, String)> {
     let collection: Collection<Document> = service
         .mongo_client
